@@ -1,111 +1,163 @@
 import rps.robotarium as robotarium
+from rps.utilities.transformations import create_si_to_uni_mapping
 from rps.utilities.graph import *
-from rps.utilities.transformations import *
-from rps.utilities.barrier_certificates import *
-from rps.utilities.misc import *
-from rps.utilities.controllers import *
-
 import numpy as np
 import pandas as pd
 
-# Instantiate Robotarium object
+# Number of robots
 N = 5
-r = robotarium.Robotarium(number_of_robots=N, show_figure=True, sim_in_real_time=True)
+ 
+L = completeGL(N)
 
-# How many iterations do we want (about N*0.033 seconds)
+# Define initial conditions
+initial_conditions = np.array([
+    [1.25, 1.0, 1.0, -1.0, 0.1],  # x positions
+    [0.25, 0.5, -0.5, -0.75, 0.2],  # y positions
+    [0.0, 0.0, 0.0, 0.0, 0.0]  # orientations
+])
+
+# Create Robotarium object
+r = robotarium.Robotarium(
+    number_of_robots=N,
+    show_figure=True,
+    sim_in_real_time=False,
+    initial_conditions=initial_conditions
+)
+
+# Simulation parameters
 iterations = 1000
+MIN_ITERATIONS = 1000  # Minimum iterations before convergence check
+CONVERGENCE_THRESHOLD = 1e-3  # Looser convergence threshold
 
-# We're working in single-integrator dynamics, and we don't want the robots
-# to collide or drive off the testbed.  Thus, we're going to use barrier certificates
-si_barrier_cert = create_single_integrator_barrier_certificate_with_boundary()
-
-# Create SI to UNI dynamics tranformation
+# Dynamics mapping
 si_to_uni_dyn, uni_to_si_states = create_si_to_uni_mapping()
 
-# Generated a connected graph Laplacian (for a cylce graph).
-L = lineGL(N)
-
-x_min = -1.5
-x_max = 1.5
-y_min = -1
-y_max = 1
+# Workspace parameters
+x_min, x_max = -1.5, 1.5
+y_min, y_max = -1.0, 1.0
 res = 0.05
 
- 
-cost = []
-wij = []
-pose = []
-cwi = []
-dxi = []
-ui = []
-dist_robots = np.zeros(N)
-cumulative_dist = []
-covergence = 0
+# Generate grid points
+X, Y = np.meshgrid(np.arange(x_min, x_max, res), np.arange(y_min, y_max, res))
+grid_points = np.vstack([X.ravel(), Y.ravel()])  # (2, M)
 
-# Robot configuration
-sensor_type = {1: [1,2,3], 2: [3,4,5]}
-healths = [1,1,0.5,1,1]
-mobility = [1,1,1,1,1]
-sensor_weights = np.zeros(N)
+# Robot parameters (heterogeneous)
+R_sr = np.array([1.0, 1.0, 0.5, 1.0, 1.0])  # Sensing ranges
+Vr = np.array([1.0, 1.2, 0.8, 1.5, 1.0])  # Max velocities (heterogeneous speeds)
+wi = [1, 1, 1, 1, 1]  # Weights for each robot
+# Density function (constant for this example)
+phi_q = np.ones(grid_points.shape[1])  # Uniform density
 
 
+# Multiplicatively weighted Voronoi partitioning
+def weighted_voronoi_partition(x_si, v_i):
+    """Compute the multiplicatively weighted Voronoi partition."""
+    D_weighted = np.zeros((grid_points.shape[1], N))
+    for i in range(N):
+        dist = np.linalg.norm(grid_points - x_si[:, i, None], axis=0) ** 2
+        D_weighted[:, i] = dist - wi[i]
+
+    return np.argmin(D_weighted, axis=1)
+
+
+# Position Gain
+kp = 1.0
+# Weight Gain
+kw = 1.0
+
+# Cost history and convergence tracking
+cost_history = []
+prev_smoothed_cost = None
+
+# Main simulation loop
 for k in range(iterations):
-
-    # Get the poses of the robots and convert to single-integrator poses
     x = r.get_poses()
-    x_si = uni_to_si_states(x)
-    current_x = x_si[0,:,None]
-    current_y = x_si[1,:,None]
-  
-    c_v = np.zeros((N,2)) # centroid vector
-    w_v = np.zeros(N) # weight vector
-    
-    
-    power_cost = 0
-    for ix in np.arange(x_min,x_max,res):
-        for iy in np.arange(y_min,y_max,res):
-            importance_value = 1
-            distances = np.zeros(N)
-            for robots in range(N):
-                distances[robots] = np.square(ix - current_x[robots]) + np.square(iy - current_y[robots]) - healths[robots]
-            # a list of N distances from the current point to each robot
-            min_index = np.argmin(distances) # get the index of the robot that is closest to the current point
-            c_v[min_index][0] += ix * importance_value
-            c_v[min_index][1] += iy * importance_value
-            w_v[min_index] += 1
-            power_cost += distances[min_index] * importance_value * (res ** 2) / 2
+    x_si = uni_to_si_states(x)[:2, :]  # (2, N)
 
-    wij.append(w_v)
-    # Initialize the single-integrator control inputs
+    # Compute multiplicatively weighted Voronoi partition
+    robot_assignments = weighted_voronoi_partition(x_si, wi)
+
+    # Initialize cost components
+    covered_cost = 0.0
+
+    # Calculate covered cost and centroids
+    c_v = np.zeros((N, 2))
+    w_v = np.zeros(N)
+
+    for i in range(N):
+        # Points assigned to this robot
+        valid_points = (robot_assignments == i)
+
+        if np.any(valid_points):
+            # Get distances and weights for valid points
+            dist_sq = np.sum((grid_points[:, valid_points] - x_si[:, i, None]) ** 2, axis=0)
+
+            # Power Cost
+            covered_cost += 0.5 * np.sum((dist_sq - wi[i]) * phi_q[valid_points]) * (res ** 2)
+
+            # Centroid calculation
+            c_v[i] = np.sum(grid_points[:, valid_points] * phi_q[valid_points] , axis=1)
+            w_v[i] = np.sum(phi_q[valid_points])
+
+            if w_v[i] > 1e-6:
+                c_v[i] /= w_v[i]
+            else:
+                c_v[i] = x_si[:, i]  # Fallback to current position
+
+    # Total cost including both components
+    total_cost = covered_cost
+    cost_history.append(total_cost)
+
+    # Compute control inputs
     si_velocities = np.zeros((2, N))
-    gain = 1
-    for robots in range(N):
-       c_x = 0
-       c_y = 0
-       if not w_v[robots] == 0:
-          c_x = c_v[robots][0] / w_v[robots]
-          c_y = c_v[robots][1] / w_v[robots]  
-          si_velocities[:, robots] = gain * np.array([(c_x - current_x[robots][0]), (c_y - current_y[robots][0])])
+    w_dot = np.zeros(N)
 
+    for i in range(N):
+        if w_v[i] > 1e-6:
+            # Compute position update
+            si_velocities[:, i] = kp * (c_v[i] - x_si[:, i])
 
-    # If convergence is reached
-    if len(cost) > 1 and abs(power_cost - cost[-1]) < 0.00001: 
-        convergence = k
-    cost.append(power_cost)
-    # Use the barrier certificate to avoid collisions
-    si_velocities = si_barrier_cert(si_velocities, x_si)
+            # Compute weight update
+            weight_update = 0
+            for j in range(N):
+                if j != i:
+                    weight_update += (wi[i] - wi[j] )  # Health-based adjustment
+            w_dot[i] = (kw / (2 * w_v[i])) * weight_update
 
-    # Transform single integrator to unicycle
+    # Update weights
+    wi += w_dot * 0.1  # Small step for weight adaptation
+    wi = np.clip(wi, 0.1, 2.0)  # Prevent negative weights
+
+    # Transform to unicycle velocities
     dxu = si_to_uni_dyn(si_velocities, x)
 
-    # Set the velocities of agents 1,...,N
-    r.set_velocities(np.arange(N), dxu)
-    # Iterate the simulation
-    r.step()
+    # Set velocities and step simulation
+    try:
+        r.set_velocities(np.arange(N), dxu)
+        r.step()
 
-# Save the data to csv file
-df = pd.DataFrame(cost)
-df.to_csv('cost_case5.csv', index=False)
+        # Enhanced convergence check
+        if k >= MIN_ITERATIONS:
+            smoothed_cost = np.mean(cost_history[-10:])
+            if prev_smoothed_cost is not None:
+                rel_change = abs(smoothed_cost - prev_smoothed_cost) / max(abs(prev_smoothed_cost), 1e-6)
 
-#Call at end of script to print debug information and for your script to run on the Robotarium server properly
+                if rel_change < CONVERGENCE_THRESHOLD:
+                    print(f"Converged at iteration {k} with relative change {rel_change:.6f}")
+                    break
+            prev_smoothed_cost = smoothed_cost
+
+        # Detailed debugging output
+        print(f"Iter {k:03d}: Cost = {total_cost:.3f} | "
+              f"Δ = {rel_change:.2e}" if k > MIN_ITERATIONS else f"Iter {k:03d}: Cost = {total_cost:.3f}")
+        print(f"Robot Positions:\n{np.round(x_si, 3)}")
+        print(f"Velocities:\n{np.round(si_velocities, 3)}\n")
+
+    except Exception as e:
+        print(f"Error at iter {k}: {str(e)}")
+        break
+
+# Save results and cleanup
+pd_cost = pd.DataFrame(cost_history)
+pd_cost.to_csv("quality.csv", index=False)
 r.call_at_scripts_end()
