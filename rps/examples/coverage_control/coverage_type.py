@@ -111,7 +111,7 @@ for k in range(iterations):
 
 # Save the data to csv file
 df = pd.DataFrame(cost)
-df.to_csv('cost_case1.csv', index=False)
+df.to_csv('type.csv', index=False)
 
 #Call at end of script to print debug information and for your script to run on the Robotarium server properly
 r.call_at_scripts_end()

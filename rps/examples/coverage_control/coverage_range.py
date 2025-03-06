@@ -166,5 +166,5 @@ for k in range(iterations):
 
 # Save results and cleanup
 pd_cost = pd.DataFrame(cost_history)
-pd_cost.to_csv("cost_case3.csv", index=False)
+pd_cost.to_csv("range.csv", index=False)
 r.call_at_scripts_end()

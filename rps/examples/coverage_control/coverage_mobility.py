@@ -118,7 +118,7 @@ total_dist = np.sum(cumulative_dist)
 print(total_dist)
 # Save the data to csv file
 df = pd.DataFrame(cost)
-df.to_csv('cost_case4.csv', index=False)
+df.to_csv('mobility.csv', index=False)
 
 #Call at end of script to print debug information and for your script to run on the Robotarium server properly
 r.call_at_scripts_end()
