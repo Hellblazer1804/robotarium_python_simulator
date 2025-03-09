@@ -91,7 +91,7 @@ def plot_robot_trajectories(robot_trajectories, initial_positions, final_positio
     plt.grid()
 
     # Save and show plot
-    plt.savefig(f"type_trajectories_case_10.png")
+    plt.savefig(f"data/type_trajectories_case_10.png")
 
 
 # Control gain
@@ -185,9 +185,9 @@ plot_robot_trajectories(robot_trajectories, initial_positions, final_positions, 
 
 # Save the data to csv file
 df = pd.DataFrame(cost_history)
-df.to_csv('type_coverage_cost_case_10.csv', index=False)
+df.to_csv('data/type_coverage_cost_case_10.csv', index=False)
 
-with open("type_coverage_case_10.txt", "w") as f:
+with open("data/type_coverage_case_10.txt", "w") as f:
     f.write(str(convergence))
 
 # Call at end of script to print debug information and for your script to run on the Robotarium server properly

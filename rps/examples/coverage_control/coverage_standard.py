@@ -85,7 +85,7 @@ def standard_coverage(scenario_num):
         plt.grid()
 
         # Save plot
-        plt.savefig(f"standard_trajectories_case_{scenario_num}.png")
+        plt.savefig(f"data/standard_trajectories_case_{scenario_num}.png")
         plt.close()
 
     # Control gain
@@ -162,10 +162,10 @@ def standard_coverage(scenario_num):
 
     # Save cost history to CSV
     pd_cost = pd.DataFrame(cost_history)
-    pd_cost.to_csv(f"standard_coverage_cost_{scenario_num}.csv", index=False)
+    pd_cost.to_csv(f"data/standard_coverage_cost_{scenario_num}.csv", index=False)
 
     # Save convergence iteration to file
-    with open(f"standard_coverage_case_{scenario_num}.txt", "w") as f:
+    with open(f"data/standard_coverage_case_{scenario_num}.txt", "w") as f:
         f.write(str(convergence))
 
     r.call_at_scripts_end()

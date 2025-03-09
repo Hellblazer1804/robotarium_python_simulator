@@ -126,7 +126,7 @@ def plot_robot_trajectories(robot_trajectories, initial_positions, final_positio
     plt.grid()
     
     # Save and show plot
-    plt.savefig(f"unified_trajectories_case_2.png")
+    plt.savefig(f"data/unified_trajectories_case_2.png")
 
 # Control gain
 k_gain = 1.0
@@ -241,8 +241,8 @@ initial_positions = np.array([robot_trajectories[i][0] for i in range(N)])  # Fi
 plot_robot_trajectories(robot_trajectories, initial_positions, final_positions, scenario_name="Case 2")
 # Save results and cleanup
 pd_cost = pd.DataFrame(cost_history)
-pd_cost.to_csv("unified_coverage_case_2.csv", index=False)
-with open("unified_coverage_case_2.txt", "w") as f:
+pd_cost.to_csv("data/unified_coverage_case_2.csv", index=False)
+with open("data/unified_coverage_case_2.txt", "w") as f:
     f.write(str(convergence))
 
 
