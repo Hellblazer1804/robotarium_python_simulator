@@ -34,7 +34,7 @@ def run_unified_coverage(scenario_num):
     r = robotarium.Robotarium(
         number_of_robots=N,
         show_figure=True,
-        sim_in_real_time=True,
+        sim_in_real_time=False,
         initial_conditions=initial_positions[:N].T
     )
 
@@ -158,15 +158,54 @@ def run_unified_coverage(scenario_num):
             'Sc': generalized_cost
         }
 
-    def plot_robot_trajectories(robot_trajectories, initial_positions, final_positions):
+    def plot_robot_trajectories(robot_trajectories, initial_positions, final_positions, sensor_types, scenario_num):
         """
-        Plots the robot trajectories along with their final Voronoi partitions.
+        Plots the robot trajectories along with their final Voronoi partitions,
+        with border colors based on sensor type and correct handling of boundary edges.
         """
         fig, ax = plt.subplots(figsize=(8, 8))
 
-        # Convert trajectory lists to arrays
-        for i in range(N):
-            trajectory = np.array(robot_trajectories[i])  # Convert list to numpy array
+        # Compute Voronoi partition for final positions
+        vor = Voronoi(final_positions)
+
+        # Define colors for sensor types
+        sensor_type_colors = {
+            1: 'red',  # Sensor Type 1
+            2: 'blue',  # Sensor Type 2,
+            3: 'green',  # Sensor Type 3
+            4: 'purple',  # Sensor Type 4
+            5: 'orange',  # Sensor Type 5
+            'default': 'black'  # Default color
+        }
+
+        # Iterate through Voronoi ridges (edges) to draw them with colors based on robot sensor type
+        for ridge_index, ridge in enumerate(vor.ridge_vertices):
+            # Check if this ridge is infinite
+            if -1 in ridge:
+                continue  # Skip infinite ridges
+
+            # Get vertices of the ridge
+            v1, v2 = vor.vertices[ridge]
+
+            # Determine robots associated with this ridge
+            p1, p2 = vor.ridge_points[ridge_index]
+
+            # Determine sensor type for robot p1 (primary robot for this region)
+            robot_sensor_type = None
+            for sensor_type, robots in sensor_types.items():
+                if p1 in robots:
+                    robot_sensor_type = sensor_type
+                    break
+
+            # Choose color based on sensor type
+            color = sensor_type_colors.get(robot_sensor_type, sensor_type_colors['default'])
+
+            # Plot the ridge as a solid line (since it is a finite edge)
+            ax.plot([v1[0], v2[0]], [v1[1], v2[1]], color=color, linestyle='-', linewidth=1.5)
+
+        # Plot robot trajectories
+        for i in range(len(robot_trajectories)):
+            trajectory = np.array(robot_trajectories[i])
 
             # Mark initial and final positions
             ax.scatter(initial_positions[i, 0], initial_positions[i, 1], c='black', marker='o', s=50,
@@ -177,19 +216,35 @@ def run_unified_coverage(scenario_num):
             # Plot trajectory
             ax.plot(trajectory[:, 0], trajectory[:, 1], label=f"Robot {i}", linewidth=2)
 
-        # Compute Voronoi partition for final positions
-        vor = Voronoi(final_positions)
+        # Add a legend for sensor types and robot numbers
+        from matplotlib.lines import Line2D
 
-        # Plot Voronoi partitions
-        voronoi_plot_2d(vor, ax=ax, show_vertices=False, line_colors='black', line_width=1.5, alpha=0.6)
+        # Create legend elements for sensor types
+        sensor_legend_elements = [
+            Line2D([0], [0], color='red', lw=2, label='Sensor Type 1'),
+            Line2D([0], [0], color='blue', lw=2, label='Sensor Type 2'),
+            Line2D([0], [0], color='green', lw=2, label='Sensor Type 3'),
+            Line2D([0], [0], color='purple', lw=2, label='Sensor Type 4'),
+            Line2D([0], [0], color='orange', lw=2, label='Sensor Type 5')
+        ]
+
+        # Create a figure legend for sensor types
+        first_legend = ax.legend(handles=sensor_legend_elements, loc='upper right',
+                                 title="Sensor Types")
+
+        # Add the first legend manually to the axis
+        ax.add_artist(first_legend)
+
+        # Create a second legend for robot trajectories
+        # This will use the existing line colors from the trajectory plots
+        ax.legend(loc='upper left', title="Robots")
 
         # Configure plot
-        plt.xlim(x_min, x_max)
-        plt.ylim(y_min, y_max)
+        plt.xlim(-1.5, 1.5)
+        plt.ylim(-1.0, 1.0)
         plt.title(f"Robot Trajectories for Unified Coverage: Scenario {scenario_num}", fontsize=16)
         plt.xlabel("X Position", fontsize=12, fontweight='bold')
         plt.ylabel("Y Position", fontsize=12, fontweight='bold')
-        plt.legend(loc='upper right', bbox_to_anchor=(1.10, 1), borderaxespad=0.)
         plt.grid()
 
         # Save plot
@@ -274,7 +329,7 @@ def run_unified_coverage(scenario_num):
     initial_positions = np.array([robot_trajectories[i][0] for i in range(N)])  # First recorded position
 
     # Plot trajectories
-    plot_robot_trajectories(robot_trajectories, initial_positions, final_positions)
+    plot_robot_trajectories(robot_trajectories, initial_positions, final_positions,sensor_types, scenario_num)
 
     # Save cost history to CSV
     df_results = pd.DataFrame({
