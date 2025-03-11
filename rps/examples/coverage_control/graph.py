@@ -79,9 +79,9 @@ def plot_cost_comparison(scenario_num):
 
     # Define specific comparisons
     comparisons = [
-        ("Hg", "Type")
-        ("Hp", "Health"),
+        ("Hg", "Type"),
         ("Ht", "Mobility"),
+        ("Hp", "Health"),
         ("Hr", "Range"),
         ("Sc", "Standard")
     ]

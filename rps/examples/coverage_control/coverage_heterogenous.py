@@ -34,7 +34,7 @@ def run_unified_coverage(scenario_num):
     r = robotarium.Robotarium(
         number_of_robots=N,
         show_figure=True,
-        sim_in_real_time=False,
+        sim_in_real_time=True,
         initial_conditions=initial_positions[:N].T
     )
 
