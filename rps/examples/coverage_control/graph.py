@@ -2,7 +2,6 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.spatial import Voronoi, voronoi_plot_2d
 import glob
 
 # Create output directory for plots
@@ -48,23 +47,18 @@ cost_metrics = [
     "Hp",  # Power cost
     "Ht",  # Temporal cost
     "Hr",  # Range-Limited Cost
-    "Sc"  # Generalized locational cost
+    "Sc"   # Generalized locational cost
 ]
 
 
 def plot_cost_comparison(scenario_num):
     """
-    Plot specific cost metrics between unified and each baseline:
-    1. H_g in unified vs H_g in type
-    2. H_p in unified vs H_p in health
-    3. H_t in unified vs H_t in mobility
-    4. H_r in unified vs H_r in range
-    5. S_c in unified vs S_c in standard
+    Plot each cost metric for the unified controller against all baselines in the same graph.
     """
     scenario_name = scenarios[scenario_num - 1]
     print(f"\nProcessing cost comparisons for Scenario {scenario_num}: {scenario_name}")
 
-    # Load unified data first
+    # Load unified data
     unified_data = {}
     try:
         unified_filename = f"data/unified_coverage_cost_{scenario_num}.csv"
@@ -72,78 +66,66 @@ def plot_cost_comparison(scenario_num):
             unified_df = pd.read_csv(unified_filename)
             for metric in cost_metrics:
                 if metric in unified_df.columns:
-                    unified_data[metric] = unified_df[metric]
-                    print(f"  Successfully loaded Unified {metric} data")
+                    unified_data[metric] = unified_df[metric].astype(float)
+                    print(f" Successfully loaded Unified {metric} data")
     except Exception as e:
-        print(f"  Error loading Unified data: {e}")
+        print(f" Error loading Unified data: {e}")
 
-    # Define specific comparisons
-    comparisons = [
-        ("Hg", "Type"),
-        ("Ht", "Mobility"),
-        ("Hp", "Health"),
-        ("Hr", "Range"),
-        ("Sc", "Standard")
-    ]
-
-    # Create each comparison plot
-    for metric, baseline in comparisons:
+    # For each cost metric, create a comparison plot with all baselines
+    for metric in cost_metrics:
         if metric not in unified_data:
-            print(f"  Missing {metric} data for Unified controller")
+            print(f" Missing {metric} data for Unified controller, skipping...")
             continue
 
-        # Load baseline data
-        baseline_data = None
-        baseline_filename = f"data/{baseline.lower()}_coverage_cost_{scenario_num}.csv"
+        plt.figure(figsize=(12, 7))
 
-        try:
-            if os.path.exists(baseline_filename):
-                baseline_df = pd.read_csv(baseline_filename)
+        # Plot unified data
+        plt.plot(range(len(unified_data[metric])), unified_data[metric],
+                 linewidth=2, color='blue', label=f"Unified {metric}")
 
-                # Extract cost data from baseline
-                if baseline_df.shape[1] == 1:  # Single column file
-                    baseline_data = baseline_df.iloc[:, 0]
-                elif 0 in baseline_df.columns:  # Numbered column
-                    baseline_data = baseline_df[0]
-                else:
-                    print(f"  Could not identify cost column in {baseline_filename}")
-                    continue
-            else:
-                print(f"  File {baseline_filename} does not exist")
+        # Plot each baseline on the same graph
+        for method in methods:
+            if method == "Unified":
                 continue
-        except Exception as e:
-            print(f"  Error loading {baseline} data: {e}")
-            continue
 
-        # Create comparison plot
-        if baseline_data is not None:
-            plt.figure(figsize=(10, 6))
+            # Load baseline data
+            baseline_data = None
+            baseline_filename = f"data/{method.lower()}_coverage_cost_{scenario_num}.csv"
 
-            # Truncate to the shorter length
-            min_length = min(len(unified_data[metric]), len(baseline_data))
+            try:
+                if os.path.exists(baseline_filename):
+                    baseline_df = pd.read_csv(baseline_filename)
+                    if metric in baseline_df.columns:
+                        baseline_data = baseline_df[metric].astype(float)
+                    elif baseline_df.shape[1] > 0:  # Try to find the data in another way
+                        if baseline_df.shape[1] == 1:  # Single column file
+                            baseline_data = baseline_df.iloc[:, 0].astype(float)
+                        elif 0 in baseline_df.columns:  # Numbered column
+                            baseline_data = baseline_df[0].astype(float)
 
-            # Plot both datasets
-            plt.plot(range(min_length), unified_data[metric][:min_length],
-                     linewidth=2, color='blue', label=f"Unified {metric}")
-            plt.plot(range(min_length), baseline_data[:min_length],
-                     linewidth=2, color='red', linestyle='--', label=f"{baseline} {metric}")
+                    if baseline_data is not None and len(baseline_data) > 0:
+                        # Normalize data to start from the same point
+                        min_length = min(len(unified_data[metric]), len(baseline_data))
+                        if baseline_data[0] != 0:
+                            normalized_data = (baseline_data[:min_length] / baseline_data[0]) * unified_data[metric][0]
+                            plt.plot(range(min_length), normalized_data,
+                                     linewidth=2, linestyle='--', label=f"{method} {metric}")
+            except Exception as e:
+                print(f" Error processing {method} data: {e}")
 
-            plt.title(f"{metric} Cost Comparison - Unified vs {baseline} - Scenario {scenario_num}", fontsize=14)
-            plt.xlabel("Iterations", fontsize=12)
-            plt.ylabel(f"{metric} Cost", fontsize=12)
-            plt.grid(True, alpha=0.3)
-            plt.legend()
+        plt.title(f"{metric} Cost Comparison - Scenario {scenario_num}: {scenario_name}", fontsize=16)
+        plt.xlabel("Iterations", fontsize=12)
+        plt.ylabel(f"{metric} Cost", fontsize=12)
+        plt.grid(True, alpha=0.3)
+        plt.legend()
 
-            # Save the plot
-            output_file = os.path.join(cost_dir, f"scenario_{scenario_num}_{metric}_unified_vs_{baseline.lower()}.png")
-            plt.savefig(output_file, dpi=300, bbox_inches="tight")
-            print(f"  Saved plot to {output_file}")
-            plt.close()
-        else:
-            print(f"  Missing data for comparison between Unified and {baseline}")
+        # Save the plot
+        output_file = os.path.join(cost_dir, f"scenario_{scenario_num}_{metric}_all_baselines.png")
+        plt.savefig(output_file, dpi=300, bbox_inches="tight")
+        print(f" Saved plot to {output_file}")
+        plt.close()
 
 
-# Function to find and copy trajectory plots
 def find_trajectory_plots(scenario_num):
     """
     Finds and copies existing trajectory plots to the output directory.
@@ -162,16 +144,15 @@ def find_trajectory_plots(scenario_num):
         # Check if any of these files exist
         for pattern in possible_patterns:
             if os.path.exists(pattern):
-                print(f"  Found trajectory plot: {pattern}")
+                print(f" Found trajectory plot: {pattern}")
                 # Copy to output directory
                 import shutil
                 output_file = os.path.join(trajectory_dir, f"scenario_{scenario_num}_{method}_trajectory.png")
                 shutil.copy(pattern, output_file)
-                print(f"  Copied to {output_file}")
+                print(f" Copied to {output_file}")
                 break
         else:
-            print(f"  No trajectory plot found for {method} in scenario {scenario_num}")
-
+            print(f" No trajectory plot found for {method} in scenario {scenario_num}")
 
 # Function to load convergence data
 def load_convergence_data(scenario_num):
@@ -197,15 +178,14 @@ def load_convergence_data(scenario_num):
                     with open(pattern, 'r') as f:
                         value = int(f.read().strip())
                         convergence_data[method] = value
-                        print(f"  Loaded convergence data for {method}: {value} iterations")
+                        print(f" Loaded convergence data for {method}: {value} iterations")
                         break
                 except Exception as e:
-                    print(f"  Error reading {pattern}: {e}")
+                    print(f" Error reading {pattern}: {e}")
         else:
-            print(f"  No convergence data found for {method}")
+            print(f" No convergence data found for {method}")
 
     return convergence_data
-
 
 # Function to plot convergence iterations as bar chart
 def plot_convergence(scenario_num):
@@ -215,12 +195,11 @@ def plot_convergence(scenario_num):
     convergence_data = load_convergence_data(scenario_num)
 
     if not convergence_data:
-        print(f"  No convergence data available for Scenario {scenario_num}")
+        print(f" No convergence data available for Scenario {scenario_num}")
         return
 
     # Create bar plot
     plt.figure(figsize=(10, 6))
-
     methods_list = list(convergence_data.keys())
     iterations = list(convergence_data.values())
 
@@ -243,9 +222,8 @@ def plot_convergence(scenario_num):
     # Save the plot
     output_file = os.path.join(convergence_dir, f"scenario_{scenario_num}_convergence.png")
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
-    print(f"  Saved convergence plot to {output_file}")
+    print(f" Saved convergence plot to {output_file}")
     plt.close()
-
 
 # Generate all plots
 for scenario_num in range(1, 11):
