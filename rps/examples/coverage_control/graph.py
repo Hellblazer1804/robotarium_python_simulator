@@ -45,7 +45,7 @@ cost_metrics = [
     "Hg",  # Locational cost
     "Hp",  # Power cost
     "Ht",  # Temporal cost
-    "Hr"
+    "Hr", 
 ]
 
 
@@ -55,8 +55,8 @@ def plot_cost_comparison(scenario_num):
     """
     scenario_name = scenarios[scenario_num - 1]
     print(f"\nProcessing cost comparisons for Scenario {scenario_num}: {scenario_name}")
-    linestyles = ['solid', 'dashed', 'dashdot', 'dotted', 'densely dotted']
-    colors = ['orange', 'green', 'red', 'purple', 'brown']
+    linestyles = ['solid', 'dashed', 'dashdot', 'dotted', "solid"]
+    colors = ['orange', 'green', 'red', 'purple', 'blue']
 
     # Load unified data
     unified_data = {}
@@ -123,8 +123,49 @@ def plot_cost_comparison(scenario_num):
         plt.savefig(output_file, dpi=300, bbox_inches="tight")
         print(f" Saved plot to {output_file}")
         plt.close()
+        
+    plt.figure(figsize=(12, 7))
+    # Plot unified data
+    # for col in ['Hg', 'Hp', 'Ht', 'Hr', 'Sc']:
+    #     normalized_data = (baseline_data[:min_length] / baseline_data[0]) * unified_data[metric][0]
 
+    #     plt.plot(range(min_length), normalized_data,linewidth=2, linestyle=linestyles[i], color=colors[i], label=f"{method} {metric}",alpha=0.7)
+    #     plt.plot(unified_df['Iteration'], unified_df[col], label=col)
+    normalized_df = unified_df.copy()
+    for col in ['Hg', 'Hp', 'Ht', 'Hr', 'Sc']:
+        # normalized_data = (baseline_data[:min_length] / baseline_data[0]) * unified_data[metric][0]
+        min_val = unified_df[col].min()
+        max_val = unified_df[col].max()
+        normalized_df[col] = (unified_df[col] - min_val) / (max_val - min_val)
 
+    # Plot the normalized data
+    plt.figure(figsize=(12, 7))
+
+    for i, col in enumerate(['Hg', 'Hp', 'Ht', 'Hr', 'Sc']):
+        name = ""
+        if col == "Hg":
+            name = "Type"
+        elif col == "Hp":
+            name = "Health"
+        elif col == "Ht":
+            name = "Mobility"
+        elif col == "Hr":
+            name = "Range"
+        elif col == "Sc":
+            name = "Unified"
+        #plt.plot(unified_df['Iteration'], normalized_df[col], label=f"{name} Sc")
+        plt.plot(unified_df['Iteration'], normalized_df[col], linewidth=2, linestyle=linestyles[i], color=colors[i], label=f"{name} Sc",alpha=0.7)
+        print("HERE")
+    plt.title(f"Sc Cost Comparison - Scenario {scenario_num}: {scenario_name}", fontsize=16)
+    plt.xlabel("Iterations", fontsize=12)
+    plt.ylabel(f"Sc Cost", fontsize=12)
+    plt.grid(True, alpha=0.3)
+    plt.legend()
+    plt.xlabel("Iteration")
+    output_file = os.path.join(cost_dir, f"scenario_{scenario_num}_Sc_all_baselines.png")
+    plt.savefig(output_file, dpi=300, bbox_inches="tight")
+    print(f" Saved plot to {output_file}")
+    plt.close()
 def find_trajectory_plots(scenario_num):
     """
     Finds and copies existing trajectory plots to the output directory.
@@ -231,9 +272,9 @@ for scenario_num in range(1, 11):
     plot_cost_comparison(scenario_num)
 
     # Find and copy trajectory plots
-    find_trajectory_plots(scenario_num)
+    #find_trajectory_plots(scenario_num)
 
     # Convergence bar plot for each scenario
-    plot_convergence(scenario_num)
+    #plot_convergence(scenario_num)
 
 print(f"\nAll plots have been generated and saved in the '{output_dir}' directory.")

@@ -172,9 +172,6 @@ def run_unified_coverage(scenario_num):
         sensor_type_colors = {
             1: 'red',  # Sensor Type 1
             2: 'blue',  # Sensor Type 2,
-            3: 'green',  # Sensor Type 3
-            4: 'purple',  # Sensor Type 4
-            5: 'orange',  # Sensor Type 5
             'default': 'black'  # Default color
         }
 
@@ -216,24 +213,24 @@ def run_unified_coverage(scenario_num):
             # Plot trajectory
             ax.plot(trajectory[:, 0], trajectory[:, 1], label=f"Robot {i}", linewidth=2)
 
-        # Add a legend for sensor types and robot numbers
-        from matplotlib.lines import Line2D
+        # # Add a legend for sensor types and robot numbers
+        # from matplotlib.lines import Line2D
 
-        # Create legend elements for sensor types
-        sensor_legend_elements = [
-            Line2D([0], [0], color='red', lw=2, label='Sensor Type 1'),
-            Line2D([0], [0], color='blue', lw=2, label='Sensor Type 2'),
-            Line2D([0], [0], color='green', lw=2, label='Sensor Type 3'),
-            Line2D([0], [0], color='purple', lw=2, label='Sensor Type 4'),
-            Line2D([0], [0], color='orange', lw=2, label='Sensor Type 5')
-        ]
+        # # Create legend elements for sensor types
+        # sensor_legend_elements = [
+        #     Line2D([0], [0], color='red', lw=2, label='Sensor Type 1'),
+        #     Line2D([0], [0], color='blue', lw=2, label='Sensor Type 2'),
+        #     Line2D([0], [0], color='green', lw=2, label='Sensor Type 3'),
+        #     Line2D([0], [0], color='purple', lw=2, label='Sensor Type 4'),
+        #     Line2D([0], [0], color='orange', lw=2, label='Sensor Type 5')
+        # ]
 
-        # Create a figure legend for sensor types
-        first_legend = ax.legend(handles=sensor_legend_elements, loc='upper right',
-                                 title="Sensor Types")
+        # # Create a figure legend for sensor types
+        # first_legend = ax.legend(handles=sensor_legend_elements, loc='upper right',
+        #                          title="Sensor Types")
 
         # Add the first legend manually to the axis
-        ax.add_artist(first_legend)
+        # ax.add_artist(first_legend)
 
         # Create a second legend for robot trajectories
         # This will use the existing line colors from the trajectory plots

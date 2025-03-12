@@ -211,8 +211,8 @@ def mobility_coverage(scenario_num):
 
         plt.xlim(x_min, x_max)
         plt.ylim(y_min, y_max)
-        plt.legend(handles=legend_elements, loc='upper right')
-
+        #plt.legend(handles=legend_elements, loc='upper right')
+        ax.legend(loc='upper left', title="Robots")
         # Configure plot
         plt.tight_layout()  # Adjust layout to fit everything in
 
