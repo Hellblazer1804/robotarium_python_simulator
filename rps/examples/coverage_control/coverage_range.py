@@ -110,10 +110,8 @@ def range_coverage(scenario_num):
             trajectory = np.array(robot_trajectories[i])
 
             # Mark initial and final positions
-            ax.scatter(initial_positions[i, 0], initial_positions[i, 1], c='black', marker='o', s=50,
-                       label="Start" if i == 0 else "")
-            ax.scatter(final_positions[i, 0], initial_positions[i, 1], c='red', marker='x', s=50,
-                       label="End" if i == 0 else "")
+            ax.scatter(initial_positions[i, 0], initial_positions[i, 1], c='black', marker='o', s=50, label="Start" if i == 0 else "")
+            ax.scatter(final_positions[i, 0], final_positions[i, -1], c='red', marker='x', s=50, label="End" if i == 0 else "")
 
             # Plot trajectory
             ax.plot(trajectory[:, 0], trajectory[:, 1], label=f"Robot {i}", linewidth=2)
