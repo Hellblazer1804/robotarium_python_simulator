@@ -33,7 +33,6 @@ scenarios = [
 
 # Define methods
 methods = [
-    "Standard",
     "Type",
     "Health",
     "Mobility",
@@ -46,8 +45,7 @@ cost_metrics = [
     "Hg",  # Locational cost
     "Hp",  # Power cost
     "Ht",  # Temporal cost
-    "Hr",  # Range-Limited Cost
-    "Sc"   # Generalized locational cost
+    "Hr"
 ]
 
 
@@ -57,6 +55,8 @@ def plot_cost_comparison(scenario_num):
     """
     scenario_name = scenarios[scenario_num - 1]
     print(f"\nProcessing cost comparisons for Scenario {scenario_num}: {scenario_name}")
+    linestyles = ['solid', 'dashed', 'dashdot', 'dotted', 'densely dotted']
+    colors = ['orange', 'green', 'red', 'purple', 'brown']
 
     # Load unified data
     unified_data = {}
@@ -84,7 +84,7 @@ def plot_cost_comparison(scenario_num):
                  linewidth=2, color='blue', label=f"Unified {metric}")
 
         # Plot each baseline on the same graph
-        for method in methods:
+        for i,method in enumerate(methods):
             if method == "Unified":
                 continue
 
@@ -94,22 +94,21 @@ def plot_cost_comparison(scenario_num):
 
             try:
                 if os.path.exists(baseline_filename):
-                    baseline_df = pd.read_csv(baseline_filename)
+                    baseline_df = pd.read_csv(baseline_filename, usecols=['Hg', 'Hp', 'Ht', 'Hr'])
+                    print(baseline_df)
                     if metric in baseline_df.columns:
                         baseline_data = baseline_df[metric].astype(float)
-                    elif baseline_df.shape[1] > 0:  # Try to find the data in another way
-                        if baseline_df.shape[1] == 1:  # Single column file
-                            baseline_data = baseline_df.iloc[:, 0].astype(float)
-                        elif 0 in baseline_df.columns:  # Numbered column
-                            baseline_data = baseline_df[0].astype(float)
+                        print(baseline_data.head())
+
 
                     if baseline_data is not None and len(baseline_data) > 0:
                         # Normalize data to start from the same point
                         min_length = min(len(unified_data[metric]), len(baseline_data))
                         if baseline_data[0] != 0:
                             normalized_data = (baseline_data[:min_length] / baseline_data[0]) * unified_data[metric][0]
+
                             plt.plot(range(min_length), normalized_data,
-                                     linewidth=2, linestyle='--', label=f"{method} {metric}")
+                                     linewidth=2, linestyle=linestyles[i], color=colors[i], label=f"{method} {metric}",alpha=0.7)
             except Exception as e:
                 print(f" Error processing {method} data: {e}")
 
@@ -205,6 +204,7 @@ def plot_convergence(scenario_num):
 
     # Use different colors for each method
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
+
 
     bars = plt.bar(methods_list, iterations, color=colors[:len(methods_list)])
 

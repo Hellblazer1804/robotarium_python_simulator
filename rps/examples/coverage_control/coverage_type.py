@@ -321,12 +321,10 @@ def type_coverage(scenario_num):
 
     # Save cost history to CSV
     df_results = pd.DataFrame({
-        "Iteration": list(range(len(cost_history['Hg']))),
         "Hg": cost_history['Hg'],
         "Hp": cost_history['Hp'],
         "Ht": cost_history['Ht'],
-        "Hr": cost_history['Hr'],
-        "dist_sum": dist_sum
+        "Hr": cost_history['Hr']
     })
     df_results.to_csv(f"data/type_coverage_cost_{scenario_num}.csv", index=False)
 
